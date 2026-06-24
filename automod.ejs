@@ -1,0 +1,940 @@
+<%- include('../includes/head', { title: 'Automod — ' + guild.name }) %>
+<%- include('../includes/header') %>
+<%- include('../includes/sidebar') %>
+
+<style>
+/* ── Layout ─────────────────────────────────────────────────── */
+.am-wrap {
+  margin-left: var(--sidebar-w); padding: 32px 36px 80px;
+  min-height: 100vh; max-width: 1140px;
+}
+@media (max-width: 768px) { .am-wrap { margin-left: 0; padding: 20px 16px 60px; } }
+
+/* ── Page header ─────────────────────────────────────────────── */
+.am-page-header {
+  display: flex; align-items: center; gap: 18px;
+  background: linear-gradient(135deg, var(--bg-secondary) 60%, rgba(var(--accent-rgb),.06));
+  border: 1px solid var(--border); border-radius: 18px;
+  padding: 24px 28px; margin-bottom: 28px;
+  box-shadow: 0 2px 24px rgba(0,0,0,.28);
+  position: relative; overflow: hidden;
+}
+.am-page-header::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 60%, rgba(var(--accent-rgb),.04));
+  pointer-events: none;
+}
+.am-page-icon {
+  width: 54px; height: 54px; border-radius: 15px; flex-shrink: 0;
+  background: rgba(var(--accent-rgb),.14); border: 1.5px solid rgba(var(--accent-rgb),.3);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); font-size: 22px;
+  box-shadow: 0 0 20px rgba(var(--accent-rgb),.18);
+}
+.am-page-title { font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; }
+.am-page-sub   { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+.am-page-badges { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-shrink: 0; }
+.am-active-badge {
+  display: flex; align-items: center; gap: 7px; padding: 8px 14px;
+  background: rgba(var(--accent-rgb),.12); border: 1px solid rgba(var(--accent-rgb),.3);
+  border-radius: 50px; color: var(--accent); font-size: 12px; font-weight: 700;
+}
+.am-active-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: amPulse 2s infinite; }
+@keyframes amPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.7)} }
+
+/* ── Tab Navigation ──────────────────────────────────────────── */
+.am-tab-nav {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 14px; padding: 5px; margin-bottom: 24px;
+  position: sticky; top: 12px; z-index: 90;
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+}
+.am-tab-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 16px; border-radius: 10px; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; background: transparent;
+  color: var(--text-muted); transition: color .18s, background .18s;
+}
+.am-tab-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+.am-tab-btn.active {
+  background: rgba(var(--accent-rgb),.16); color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb),.3);
+}
+.am-tab-btn i { font-size: 13px; }
+@media (max-width: 600px) { .am-tab-btn span { display: none; } .am-tab-btn { flex: none; padding: 10px 14px; } }
+
+/* ── Panels ──────────────────────────────────────────────────── */
+.am-panel { display: none; animation: amFadeIn .22s ease; }
+.am-panel.active { display: block; }
+@keyframes amFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Section card ────────────────────────────────────────────── */
+.am-section {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 16px; margin-bottom: 20px; overflow: hidden;
+}
+.am-section-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 22px; border-bottom: 1px solid var(--border);
+  background: rgba(var(--accent-rgb),.03);
+}
+.am-section-icon {
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+  background: rgba(var(--accent-rgb),.12); color: var(--accent);
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+}
+.am-section-title  { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.am-section-sub    { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.am-section-body   { padding: 22px; }
+
+/* ── Module toggle cards ─────────────────────────────────────── */
+.am-modules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 700px) { .am-modules-grid { grid-template-columns: 1fr; } }
+
+.am-module-card {
+  background: var(--bg-tertiary); border: 1.5px solid var(--border);
+  border-radius: 13px; padding: 18px 20px;
+  transition: border-color .2s, box-shadow .2s, transform .18s;
+  cursor: pointer;
+}
+.am-module-card:hover { border-color: rgba(var(--accent-rgb),.35); transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,0,0,.2); }
+.am-module-card.enabled { border-color: rgba(var(--accent-rgb),.4); background: rgba(var(--accent-rgb),.05); }
+.am-module-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.am-module-info { display: flex; align-items: center; gap: 11px; }
+.am-module-icon {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+  background: rgba(var(--accent-rgb),.1); color: var(--accent);
+}
+.am-module-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.am-module-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.am-module-sub  { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+/* ── Toggle switch ───────────────────────────────────────────── */
+.am-toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.am-toggle input { opacity: 0; width: 0; height: 0; }
+.am-toggle-track {
+  position: absolute; inset: 0; border-radius: 50px;
+  background: var(--border); cursor: pointer;
+  transition: background .2s;
+}
+.am-toggle-track::after {
+  content: ''; position: absolute; left: 3px; top: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--text-muted); transition: transform .22s, background .2s;
+}
+.am-toggle input:checked + .am-toggle-track { background: var(--accent); }
+.am-toggle input:checked + .am-toggle-track::after { transform: translateX(20px); background: #fff; }
+
+/* ── Sub-settings (collapse) ─────────────────────────────────── */
+.am-sub-settings {
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+  display: none; gap: 10px; flex-direction: column;
+}
+.am-sub-settings.open { display: flex; }
+.am-sub-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.am-sub-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.am-sub-input {
+  width: 72px; padding: 6px 10px; text-align: center;
+  background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-primary); font-size: 13px; font-weight: 600; outline: none;
+  transition: border-color .16s;
+}
+.am-sub-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(var(--accent-rgb),.15); }
+
+/* ── Punishment selector ─────────────────────────────────────── */
+.am-action-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+@media(max-width:560px){ .am-action-cards { grid-template-columns: 1fr; } }
+.am-action-card {
+  padding: 16px; border-radius: 13px; border: 2px solid var(--border);
+  cursor: pointer; text-align: center; transition: border-color .18s, background .18s, transform .18s;
+}
+.am-action-card:hover { border-color: rgba(var(--accent-rgb),.4); transform: translateY(-2px); }
+.am-action-card.selected {
+  border-color: var(--accent); background: rgba(var(--accent-rgb),.1);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb),.2), 0 8px 24px rgba(var(--accent-rgb),.12);
+}
+.am-action-icon { font-size: 26px; margin-bottom: 8px; }
+.am-action-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.am-action-desc { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+/* ── Strikes slider ──────────────────────────────────────────── */
+.am-strikes-wrap { display: flex; align-items: center; gap: 16px; }
+.am-strikes-display {
+  font-size: 32px; font-weight: 900; color: var(--accent);
+  min-width: 52px; text-align: center; line-height: 1;
+}
+.am-strikes-controls { flex: 1; }
+.am-slider {
+  width: 100%; -webkit-appearance: none; appearance: none;
+  height: 6px; border-radius: 3px; outline: none; cursor: pointer;
+  background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--val, 18.36%), var(--border) var(--val, 18.36%));
+}
+.am-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); cursor: pointer; border: 3px solid var(--bg-secondary);
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb),.4); transition: transform .15s;
+}
+.am-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.am-slider-labels { display: flex; justify-content: space-between; margin-top: 6px; color: var(--text-muted); font-size: 11px; }
+
+/* ── Custom select ───────────────────────────────────────────── */
+.am-select {
+  width: 100%; padding: 11px 14px; background: var(--bg-tertiary);
+  border: 1.5px solid var(--border); border-radius: 10px;
+  color: var(--text-primary); font-size: 13px; outline: none;
+  cursor: pointer; transition: border-color .16s;
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+  padding-right: 36px;
+}
+.am-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(var(--accent-rgb),.14); }
+.am-select option { background: var(--bg-secondary); }
+
+/* ── Channel multi-select pills ──────────────────────────────── */
+.am-channel-search {
+  width: 100%; padding: 10px 14px; margin-bottom: 12px;
+  background: var(--bg-tertiary); border: 1.5px solid var(--border);
+  border-radius: 10px; color: var(--text-primary); font-size: 13px; outline: none;
+  transition: border-color .16s;
+}
+.am-channel-search:focus { border-color: var(--accent); }
+.am-channel-search::placeholder { color: var(--text-muted); }
+.am-channel-list { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-right: 4px; }
+.am-channel-list::-webkit-scrollbar { width: 4px; }
+.am-channel-list::-webkit-scrollbar-track { background: transparent; }
+.am-channel-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.am-ch-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+  border-radius: 9px; cursor: pointer; transition: background .15s;
+  border: 1px solid transparent;
+}
+.am-ch-item:hover { background: var(--bg-hover); }
+.am-ch-item.selected { background: rgba(var(--accent-rgb),.08); border-color: rgba(var(--accent-rgb),.25); }
+.am-ch-check {
+  width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0;
+  border: 2px solid var(--border); background: var(--bg-tertiary);
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, background .15s;
+}
+.am-ch-item.selected .am-ch-check { border-color: var(--accent); background: var(--accent); }
+.am-ch-check i { font-size: 9px; color: #fff; display: none; }
+.am-ch-item.selected .am-ch-check i { display: block; }
+.am-ch-name { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+.am-ch-name span { color: var(--accent); margin-right: 4px; }
+.am-ch-item.selected .am-ch-name { color: var(--text-primary); }
+.am-selected-count {
+  margin-bottom: 10px; font-size: 12px; color: var(--text-muted);
+  display: flex; align-items: center; gap: 6px;
+}
+.am-selected-count b { color: var(--accent); }
+
+/* ── Word filter ─────────────────────────────────────────────── */
+.am-word-input-row { display: flex; gap: 10px; margin-bottom: 18px; }
+.am-word-input {
+  flex: 1; padding: 11px 14px; background: var(--bg-tertiary);
+  border: 1.5px solid var(--border); border-radius: 10px;
+  color: var(--text-primary); font-size: 13px; outline: none;
+  transition: border-color .16s;
+}
+.am-word-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(var(--accent-rgb),.14); }
+.am-word-input::placeholder { color: var(--text-muted); }
+.am-word-add-btn {
+  padding: 11px 20px; border-radius: 10px; border: none; cursor: pointer;
+  background: var(--accent); color: #fff; font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; gap: 7px;
+  transition: background .16s, transform .14s, box-shadow .16s; white-space: nowrap;
+}
+.am-word-add-btn:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(var(--accent-rgb),.3); }
+.am-word-add-btn:active { transform: scale(.97); }
+.am-words-cloud { display: flex; flex-wrap: wrap; gap: 8px; min-height: 48px; }
+.am-word-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px 6px 14px; border-radius: 50px;
+  background: rgba(var(--accent-rgb),.1); border: 1px solid rgba(var(--accent-rgb),.28);
+  color: var(--text-primary); font-size: 12px; font-weight: 600;
+  animation: amTagIn .18s ease;
+}
+@keyframes amTagIn { from { opacity:0; transform: scale(.8); } to { opacity:1; transform: scale(1); } }
+.am-word-remove {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%; cursor: pointer;
+  background: rgba(var(--accent-rgb),.25); color: var(--text-secondary);
+  font-size: 9px; border: none; padding: 0;
+  transition: background .14s, color .14s; flex-shrink: 0;
+}
+.am-word-remove:hover { background: var(--danger); color: #fff; }
+.am-words-empty { color: var(--text-muted); font-size: 13px; font-style: italic; padding: 12px 0; }
+.am-word-stats {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 14px; font-size: 12px; color: var(--text-muted);
+}
+.am-word-stats b { color: var(--accent); }
+
+/* ── Form rows ───────────────────────────────────────────────── */
+.am-form-row { margin-bottom: 20px; }
+.am-form-label {
+  display: block; font-size: 12px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px;
+}
+.am-form-hint { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+/* ── Save button ─────────────────────────────────────────────── */
+.am-save-row { display: flex; justify-content: flex-end; margin-top: 24px; gap: 12px; }
+.am-save-btn {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 12px 28px; border-radius: 11px; border: none; cursor: pointer;
+  background: var(--accent); color: #fff; font-size: 14px; font-weight: 700;
+  transition: background .16s, transform .14s, box-shadow .16s;
+  box-shadow: 0 4px 16px rgba(var(--accent-rgb),.28);
+}
+.am-save-btn:hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(var(--accent-rgb),.38); }
+.am-save-btn:active { transform: scale(.97); }
+.am-save-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.am-save-btn i { font-size: 13px; }
+
+/* ── Toast notifications ─────────────────────────────────────── */
+#amToastArea { position: fixed; bottom: 28px; right: 28px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+.am-toast {
+  display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+  border-radius: 12px; min-width: 240px; max-width: 340px;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  animation: amToastIn .28s cubic-bezier(.34,1.56,.64,1); font-size: 13px; font-weight: 600;
+  color: var(--text-primary);
+}
+.am-toast.out { animation: amToastOut .22s ease forwards; }
+.am-toast.success { border-color: var(--success); }
+.am-toast.error   { border-color: var(--danger); }
+.am-toast-icon { font-size: 16px; flex-shrink: 0; }
+.am-toast.success .am-toast-icon { color: var(--success); }
+.am-toast.error   .am-toast-icon { color: var(--danger); }
+@keyframes amToastIn { from { opacity:0; transform: translateX(32px) scale(.94); } to { opacity:1; transform: translateX(0) scale(1); } }
+@keyframes amToastOut{ to   { opacity:0; transform: translateX(32px) scale(.9); } }
+
+/* ── Dividers & spacing ──────────────────────────────────────── */
+.am-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media(max-width:560px){ .am-grid-2 { grid-template-columns: 1fr; } }
+</style>
+
+<div class="am-wrap">
+
+  <!-- Page Header -->
+  <div class="am-page-header">
+    <div class="am-page-icon"><i class="fa fa-robot"></i></div>
+    <div>
+      <div class="am-page-title">Automod Control Center</div>
+      <div class="am-page-sub">All filters, punishments &amp; rules — <strong><%= guild.name %></strong></div>
+    </div>
+    <div class="am-page-badges">
+      <div class="am-active-badge">
+        <div class="am-active-dot"></div>
+        <span id="amModuleCount">0</span> Active
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <nav class="am-tab-nav">
+    <button class="am-tab-btn active" data-panel="filters">
+      <i class="fa fa-filter"></i><span>Filters</span>
+    </button>
+    <button class="am-tab-btn" data-panel="punishment">
+      <i class="fa fa-gavel"></i><span>Punishment</span>
+    </button>
+    <button class="am-tab-btn" data-panel="whitelist">
+      <i class="fa fa-list-check"></i><span>Whitelist</span>
+    </button>
+    <button class="am-tab-btn" data-panel="wordfilter">
+      <i class="fa fa-ban"></i><span>Word Filter</span>
+    </button>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PANEL 1 — FILTERS
+  ════════════════════════════════════════════════════════════ -->
+  <div class="am-panel active" id="panel-filters">
+
+    <div class="am-section">
+      <div class="am-section-head">
+        <div class="am-section-icon"><i class="fa fa-shield-alt"></i></div>
+        <div>
+          <div class="am-section-title">Protection Modules</div>
+          <div class="am-section-sub">Enable or disable individual protection filters. Changes take effect after saving.</div>
+        </div>
+      </div>
+      <div class="am-section-body">
+        <div class="am-modules-grid">
+
+          <!-- Anti-Spam -->
+          <div class="am-module-card <%= automod.anti_spam ? 'enabled' : '' %>" id="card-anti_spam" onclick="toggleModule('anti_spam')">
+            <div class="am-module-top">
+              <div class="am-module-info">
+                <div class="am-module-icon"><i class="fa fa-comment-slash"></i></div>
+                <div>
+                  <div class="am-module-name">Anti-Spam</div>
+                  <div class="am-module-desc">Limit rapid message bursts</div>
+                </div>
+              </div>
+              <label class="am-toggle" onclick="event.stopPropagation()">
+                <input type="checkbox" id="toggle-anti_spam" <%= automod.anti_spam ? 'checked' : '' %> onchange="syncCard('anti_spam',this.checked)">
+                <span class="am-toggle-track"></span>
+              </label>
+            </div>
+            <div class="am-module-sub">Detects message flooding and issues a strike per violation.</div>
+            <div class="am-sub-settings" id="sub-anti_spam">
+              <div class="am-sub-row">
+                <span class="am-sub-label"><i class="fa fa-hashtag"></i> Max messages</span>
+                <input class="am-sub-input" type="number" id="anti_spam_messages" value="<%= automod.anti_spam_messages || 3 %>" min="2" max="20">
+              </div>
+              <div class="am-sub-row">
+                <span class="am-sub-label"><i class="fa fa-clock"></i> Per seconds</span>
+                <input class="am-sub-input" type="number" id="anti_spam_seconds" value="<%= automod.anti_spam_seconds || 5 %>" min="2" max="30">
+              </div>
+            </div>
+          </div>
+
+          <!-- Anti-Links -->
+          <div class="am-module-card <%= automod.anti_links ? 'enabled' : '' %>" id="card-anti_links" onclick="toggleModule('anti_links')">
+            <div class="am-module-top">
+              <div class="am-module-info">
+                <div class="am-module-icon"><i class="fa fa-link"></i></div>
+                <div>
+                  <div class="am-module-name">Anti-Links</div>
+                  <div class="am-module-desc">Block all URL sharing</div>
+                </div>
+              </div>
+              <label class="am-toggle" onclick="event.stopPropagation()">
+                <input type="checkbox" id="toggle-anti_links" <%= automod.anti_links ? 'checked' : '' %> onchange="syncCard('anti_links',this.checked)">
+                <span class="am-toggle-track"></span>
+              </label>
+            </div>
+            <div class="am-module-sub">Removes messages containing HTTP/S links in all non-whitelisted channels.</div>
+          </div>
+
+          <!-- Anti-Invites -->
+          <div class="am-module-card <%= automod.anti_invites ? 'enabled' : '' %>" id="card-anti_invites" onclick="toggleModule('anti_invites')">
+            <div class="am-module-top">
+              <div class="am-module-info">
+                <div class="am-module-icon"><i class="fa fa-user-plus"></i></div>
+                <div>
+                  <div class="am-module-name">Anti-Invites</div>
+                  <div class="am-module-desc">Block Discord invite links</div>
+                </div>
+              </div>
+              <label class="am-toggle" onclick="event.stopPropagation()">
+                <input type="checkbox" id="toggle-anti_invites" <%= automod.anti_invites ? 'checked' : '' %> onchange="syncCard('anti_invites',this.checked)">
+                <span class="am-toggle-track"></span>
+              </label>
+            </div>
+            <div class="am-module-sub">Deletes messages with discord.gg or discordapp.com invite links.</div>
+          </div>
+
+          <!-- Anti-Attachments -->
+          <div class="am-module-card <%= automod.anti_attachments ? 'enabled' : '' %>" id="card-anti_attachments" onclick="toggleModule('anti_attachments')">
+            <div class="am-module-top">
+              <div class="am-module-info">
+                <div class="am-module-icon"><i class="fa fa-paperclip"></i></div>
+                <div>
+                  <div class="am-module-name">Anti-Attachments</div>
+                  <div class="am-module-desc">Block file uploads</div>
+                </div>
+              </div>
+              <label class="am-toggle" onclick="event.stopPropagation()">
+                <input type="checkbox" id="toggle-anti_attachments" <%= automod.anti_attachments ? 'checked' : '' %> onchange="syncCard('anti_attachments',this.checked)">
+                <span class="am-toggle-track"></span>
+              </label>
+            </div>
+            <div class="am-module-sub">Prevents users from posting files, images and other attachments.</div>
+          </div>
+
+          <!-- Anti-Ghost Ping -->
+          <div class="am-module-card <%= automod.anti_ghostping ? 'enabled' : '' %>" id="card-anti_ghostping" onclick="toggleModule('anti_ghostping')">
+            <div class="am-module-top">
+              <div class="am-module-info">
+                <div class="am-module-icon"><i class="fa fa-ghost"></i></div>
+                <div>
+                  <div class="am-module-name">Anti-Ghost Ping</div>
+                  <div class="am-module-desc">Catch deleted mentions</div>
+                </div>
+              </div>
+              <label class="am-toggle" onclick="event.stopPropagation()">
+                <input type="checkbox" id="toggle-anti_ghostping" <%= automod.anti_ghostping ? 'checked' : '' %> onchange="syncCard('anti_ghostping',this.checked)">
+                <span class="am-toggle-track"></span>
+              </label>
+            </div>
+            <div class="am-module-sub">Logs and penalizes users who mention then delete their message.</div>
+          </div>
+
+          <!-- Anti-Mass Mention -->
+          <div class="am-module-card <%= (automod.anti_massmention > 0) ? 'enabled' : '' %>" id="card-anti_massmention" onclick="toggleModule('anti_massmention')">
+            <div class="am-module-top">
+              <div class="am-module-info">
+                <div class="am-module-icon"><i class="fa fa-at"></i></div>
+                <div>
+                  <div class="am-module-name">Anti-Mass Mention</div>
+                  <div class="am-module-desc">Limit @mentions per message</div>
+                </div>
+              </div>
+              <label class="am-toggle" onclick="event.stopPropagation()">
+                <input type="checkbox" id="toggle-anti_massmention" <%= (automod.anti_massmention > 0) ? 'checked' : '' %> onchange="syncCard('anti_massmention',this.checked)">
+                <span class="am-toggle-track"></span>
+              </label>
+            </div>
+            <div class="am-module-sub">Triggers when a single message exceeds the mention threshold.</div>
+            <div class="am-sub-settings" id="sub-anti_massmention">
+              <div class="am-sub-row">
+                <span class="am-sub-label"><i class="fa fa-at"></i> Max mentions</span>
+                <input class="am-sub-input" type="number" id="anti_massmention" value="<%= automod.anti_massmention || 5 %>" min="2" max="50">
+              </div>
+            </div>
+          </div>
+
+          <!-- Max Lines -->
+          <div class="am-module-card <%= (automod.max_lines > 0) ? 'enabled' : '' %>" id="card-max_lines" onclick="toggleModule('max_lines')">
+            <div class="am-module-top">
+              <div class="am-module-info">
+                <div class="am-module-icon"><i class="fa fa-align-left"></i></div>
+                <div>
+                  <div class="am-module-name">Message Line Limit</div>
+                  <div class="am-module-desc">Cap newlines per message</div>
+                </div>
+              </div>
+              <label class="am-toggle" onclick="event.stopPropagation()">
+                <input type="checkbox" id="toggle-max_lines" <%= (automod.max_lines > 0) ? 'checked' : '' %> onchange="syncCard('max_lines',this.checked)">
+                <span class="am-toggle-track"></span>
+              </label>
+            </div>
+            <div class="am-module-sub">Removes messages that exceed the maximum allowed line count.</div>
+            <div class="am-sub-settings" id="sub-max_lines">
+              <div class="am-sub-row">
+                <span class="am-sub-label"><i class="fa fa-list-ol"></i> Max lines</span>
+                <input class="am-sub-input" type="number" id="max_lines" value="<%= automod.max_lines || 10 %>" min="2" max="100">
+              </div>
+            </div>
+          </div>
+
+        </div><!-- .am-modules-grid -->
+
+        <div class="am-save-row">
+          <button class="am-save-btn" id="btn-saveFilters" onclick="saveFilters()">
+            <i class="fa fa-save"></i> Save Filters
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PANEL 2 — PUNISHMENT
+  ════════════════════════════════════════════════════════════ -->
+  <div class="am-panel" id="panel-punishment">
+
+    <div class="am-section">
+      <div class="am-section-head">
+        <div class="am-section-icon"><i class="fa fa-gavel"></i></div>
+        <div>
+          <div class="am-section-title">Strikes &amp; Punishment</div>
+          <div class="am-section-sub">Configure how many strikes trigger an action and what that action is.</div>
+        </div>
+      </div>
+      <div class="am-section-body">
+
+        <!-- Strikes slider -->
+        <div class="am-form-row">
+          <label class="am-form-label">Strike Threshold</label>
+          <div class="am-strikes-wrap">
+            <div class="am-strikes-display" id="strikesDisplay"><%= automod.strikes || 10 %></div>
+            <div class="am-strikes-controls">
+              <input class="am-slider" type="range" id="strikesSlider" min="1" max="50" value="<%= automod.strikes || 10 %>">
+              <div class="am-slider-labels"><span>1</span><span>10</span><span>25</span><span>50</span></div>
+            </div>
+          </div>
+          <div class="am-form-hint">User will receive the punishment below after reaching <strong id="strikesHint"><%= automod.strikes || 10 %></strong> strikes.</div>
+        </div>
+
+        <!-- Action type -->
+        <div class="am-form-row">
+          <label class="am-form-label">Punishment Action</label>
+          <div class="am-action-cards">
+            <div class="am-action-card <%= (automod.action || 'TIMEOUT') === 'TIMEOUT' ? 'selected' : '' %>" onclick="selectAction('TIMEOUT')">
+              <div class="am-action-icon">⏱️</div>
+              <div class="am-action-name">Timeout</div>
+              <div class="am-action-desc">Temporarily mutes the user</div>
+            </div>
+            <div class="am-action-card <%= automod.action === 'KICK' ? 'selected' : '' %>" onclick="selectAction('KICK')">
+              <div class="am-action-icon">👢</div>
+              <div class="am-action-name">Kick</div>
+              <div class="am-action-desc">Removes user from server</div>
+            </div>
+            <div class="am-action-card <%= automod.action === 'BAN' ? 'selected' : '' %>" onclick="selectAction('BAN')">
+              <div class="am-action-icon"><:hammer:1497297193764126880></div>
+              <div class="am-action-name">Ban</div>
+              <div class="am-action-desc">Permanently bans the user</div>
+            </div>
+          </div>
+          <input type="hidden" id="selectedAction" value="<%= automod.action || 'TIMEOUT' %>">
+        </div>
+
+        <!-- Mod log channel -->
+        <div class="am-form-row">
+          <label class="am-form-label">Mod Log Channel</label>
+          <select class="am-select" id="modlogChannel">
+            <option value="">— No log channel —</option>
+            <% textChannels.forEach(function(ch) { %>
+              <option value="<%= ch.id %>" <%= modlogChannel === ch.id ? 'selected' : '' %>>#<%= ch.name %></option>
+            <% }); %>
+          </select>
+          <div class="am-form-hint">Automod actions will be logged to this channel.</div>
+        </div>
+
+        <div class="am-save-row">
+          <button class="am-save-btn" id="btn-savePunishment" onclick="savePunishment()">
+            <i class="fa fa-save"></i> Save Punishment
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PANEL 3 — WHITELIST
+  ════════════════════════════════════════════════════════════ -->
+  <div class="am-panel" id="panel-whitelist">
+
+    <div class="am-section">
+      <div class="am-section-head">
+        <div class="am-section-icon"><i class="fa fa-list-check"></i></div>
+        <div>
+          <div class="am-section-title">Whitelisted Channels</div>
+          <div class="am-section-sub">Automod filters are completely ignored in these channels.</div>
+        </div>
+      </div>
+      <div class="am-section-body">
+        <div class="am-selected-count">
+          <i class="fa fa-check-circle" style="color:var(--accent)"></i>
+          <span><b id="chSelectedCount">0</b> channels whitelisted</span>
+        </div>
+        <input class="am-channel-search" type="text" id="chSearch" placeholder="&#xf002;  Search channels…" oninput="filterChannels(this.value)">
+        <div class="am-channel-list" id="chList">
+          <% textChannels.forEach(function(ch) { %>
+            <% var isSelected = (automod.wh_channels || []).indexOf(ch.id) !== -1; %>
+            <div class="am-ch-item <%= isSelected ? 'selected' : '' %>" data-id="<%= ch.id %>" data-name="#<%= ch.name %>" onclick="toggleChannel(this)">
+              <div class="am-ch-check"><i class="fa fa-check"></i></div>
+              <div class="am-ch-name"><span>#</span><%= ch.name %></div>
+              <% if(ch.category) { %><div style="margin-left:auto;font-size:11px;color:var(--text-muted)"><%= ch.category %></div><% } %>
+            </div>
+          <% }); %>
+          <% if(!textChannels.length) { %>
+            <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">No text channels found</div>
+          <% } %>
+        </div>
+
+        <div class="am-save-row">
+          <button class="am-save-btn" id="btn-saveWhitelist" onclick="saveWhitelist()">
+            <i class="fa fa-save"></i> Save Whitelist
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PANEL 4 — WORD FILTER
+  ════════════════════════════════════════════════════════════ -->
+  <div class="am-panel" id="panel-wordfilter">
+
+    <div class="am-section">
+      <div class="am-section-head">
+        <div class="am-section-icon"><i class="fa fa-ban"></i></div>
+        <div>
+          <div class="am-section-title">Word Filter</div>
+          <div class="am-section-sub">Block specific words or phrases. Words are matched case-insensitively.</div>
+        </div>
+        <div style="margin-left:auto">
+          <label class="am-toggle">
+            <input type="checkbox" id="toggle-badwords" <%= automod.anti_badwords ? 'checked' : '' %> onchange="toggleBadWords(this.checked)">
+            <span class="am-toggle-track"></span>
+          </label>
+        </div>
+      </div>
+      <div class="am-section-body">
+
+        <div class="am-word-stats">
+          <i class="fa fa-database" style="color:var(--accent)"></i>
+          <span><b id="wordCount"><%= (automod.bad_words || []).length %></b> words in filter</span>
+          <span style="flex:1"></span>
+          <% if((automod.bad_words || []).length > 0) { %>
+          <button onclick="clearAllWords()" style="background:none;border:none;color:var(--danger);font-size:12px;cursor:pointer;font-weight:600;padding:4px 8px;border-radius:6px;transition:background .14s" onmouseover="this.style.background='rgba(237,66,69,.1)'" onmouseout="this.style.background='none'">
+            <i class="fa fa-trash"></i> Clear all
+          </button>
+          <% } %>
+        </div>
+
+        <div class="am-word-input-row">
+          <input class="am-word-input" type="text" id="newWordInput" placeholder="Type a word or phrase…" maxlength="50"
+            onkeydown="if(event.key==='Enter'){addWord()}">
+          <button class="am-word-add-btn" onclick="addWord()"><i class="fa fa-plus"></i> Add Word</button>
+        </div>
+
+        <div class="am-words-cloud" id="wordsCloud">
+          <% var badWords = automod.bad_words || []; %>
+          <% if(badWords.length > 0) { %>
+            <% badWords.forEach(function(w) { %>
+              <div class="am-word-tag" data-word="<%= w %>">
+                <%= w %>
+                <button class="am-word-remove" title="Remove" onclick="removeWord('<%= w %>')"><i class="fa fa-times"></i></button>
+              </div>
+            <% }); %>
+          <% } else { %>
+            <div class="am-words-empty" id="wordsEmpty">No words added yet. Add your first word above.</div>
+          <% } %>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- .am-wrap -->
+
+<!-- Toast area -->
+<div id="amToastArea"></div>
+
+<script>
+(function() {
+  var GUILD_ID = '<%= guild.id %>';
+  var API_URL  = '/manage/' + GUILD_ID + '/automod';
+
+  /* ── Tab switching ─────────────────────────────────────────── */
+  document.querySelectorAll('.am-tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.am-tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.am-panel').forEach(function(p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+    });
+  });
+
+  /* ── Active module count badge ─────────────────────────────── */
+  function updateModuleCount() {
+    var toggles = ['anti_spam','anti_links','anti_invites','anti_attachments','anti_ghostping','anti_massmention','max_lines'];
+    var count = toggles.filter(function(id) {
+      var el = document.getElementById('toggle-' + id);
+      return el && el.checked;
+    }).length;
+    var bwToggle = document.getElementById('toggle-badwords');
+    if (bwToggle && bwToggle.checked) count++;
+    document.getElementById('amModuleCount').textContent = count;
+  }
+  updateModuleCount();
+
+  /* ── Module card toggle ────────────────────────────────────── */
+  window.toggleModule = function(id) {
+    var toggle = document.getElementById('toggle-' + id);
+    if (!toggle) return;
+    toggle.checked = !toggle.checked;
+    syncCard(id, toggle.checked);
+  };
+  window.syncCard = function(id, checked) {
+    var card = document.getElementById('card-' + id);
+    if (card) card.classList.toggle('enabled', checked);
+    var sub = document.getElementById('sub-' + id);
+    if (sub) sub.classList.toggle('open', checked);
+    updateModuleCount();
+  };
+
+  /* Init sub-settings visibility */
+  ['anti_spam','anti_massmention','max_lines'].forEach(function(id) {
+    var toggle = document.getElementById('toggle-' + id);
+    var sub = document.getElementById('sub-' + id);
+    if (toggle && sub && toggle.checked) sub.classList.add('open');
+  });
+
+  /* ── Strikes slider ────────────────────────────────────────── */
+  var slider = document.getElementById('strikesSlider');
+  var display = document.getElementById('strikesDisplay');
+  var hint = document.getElementById('strikesHint');
+  if (slider) {
+    function updateSlider(val) {
+      display.textContent = val;
+      if (hint) hint.textContent = val;
+      var pct = ((val - 1) / (50 - 1) * 100).toFixed(2) + '%';
+      slider.style.setProperty('--val', pct);
+    }
+    updateSlider(slider.value);
+    slider.addEventListener('input', function() { updateSlider(this.value); });
+  }
+
+  /* ── Action selector ───────────────────────────────────────── */
+  window.selectAction = function(action) {
+    document.querySelectorAll('.am-action-card').forEach(function(c) { c.classList.remove('selected'); });
+    event.currentTarget.classList.add('selected');
+    document.getElementById('selectedAction').value = action;
+  };
+
+  /* ── Channel whitelist ─────────────────────────────────────── */
+  function countSelected() {
+    var n = document.querySelectorAll('#chList .am-ch-item.selected').length;
+    document.getElementById('chSelectedCount').textContent = n;
+  }
+  countSelected();
+  window.toggleChannel = function(el) {
+    el.classList.toggle('selected');
+    countSelected();
+  };
+  window.filterChannels = function(query) {
+    var q = query.toLowerCase();
+    document.querySelectorAll('#chList .am-ch-item').forEach(function(item) {
+      var name = (item.dataset.name || '').toLowerCase();
+      item.style.display = (!q || name.includes(q)) ? '' : 'none';
+    });
+  };
+
+  /* ── Word filter ───────────────────────────────────────────── */
+  function updateWordCount() {
+    var n = document.querySelectorAll('#wordsCloud .am-word-tag').length;
+    document.getElementById('wordCount').textContent = n;
+    var empty = document.getElementById('wordsEmpty');
+    if (empty) empty.style.display = n ? 'none' : '';
+  }
+
+  window.addWord = function() {
+    var input = document.getElementById('newWordInput');
+    var word = input.value.trim().toLowerCase();
+    if (!word || word.length > 50) return;
+    var existing = document.querySelector('#wordsCloud .am-word-tag[data-word="' + word + '"]');
+    if (existing) { toast('Word already in list', 'error'); return; }
+    apiFetch({ op: 'addWord', word: word }, function(ok) {
+      if (ok) {
+        input.value = '';
+        var cloud = document.getElementById('wordsCloud');
+        var empty = document.getElementById('wordsEmpty');
+        if (empty) empty.style.display = 'none';
+        var tag = document.createElement('div');
+        tag.className = 'am-word-tag'; tag.dataset.word = word;
+        tag.innerHTML = word + ' <button class="am-word-remove" title="Remove" onclick="removeWord(\'' + word.replace(/'/g,"\\'") + '\')"><i class="fa fa-times"></i></button>';
+        cloud.appendChild(tag);
+        updateWordCount();
+        toast('Word added', 'success');
+      }
+    });
+  };
+
+  window.removeWord = function(word) {
+    apiFetch({ op: 'removeWord', word: word }, function(ok) {
+      if (ok) {
+        var tag = document.querySelector('#wordsCloud .am-word-tag[data-word="' + word + '"]');
+        if (tag) { tag.style.transform = 'scale(0)'; tag.style.opacity = '0'; tag.style.transition = '.18s'; setTimeout(function(){ tag.remove(); updateWordCount(); }, 180); }
+        toast('Word removed', 'success');
+      }
+    });
+  };
+
+  window.clearAllWords = function() {
+    if (!confirm('Remove all words from the filter?')) return;
+    apiFetch({ op: 'clearWords' }, function(ok) {
+      if (ok) {
+        var cloud = document.getElementById('wordsCloud');
+        cloud.querySelectorAll('.am-word-tag').forEach(function(t){ t.remove(); });
+        updateWordCount();
+        toast('Word filter cleared', 'success');
+      }
+    });
+  };
+
+  window.toggleBadWords = function(checked) {
+    apiFetch({ op: 'toggleBadWords', enabled: checked ? 'true' : 'false' }, function(ok) {
+      if (ok) { toast('Word filter ' + (checked ? 'enabled' : 'disabled'), 'success'); updateModuleCount(); }
+    });
+  };
+
+  /* ── Save operations ───────────────────────────────────────── */
+  window.saveFilters = function() {
+    var payload = {
+      op: 'saveFilters',
+      anti_spam: document.getElementById('toggle-anti_spam').checked ? 'true' : 'false',
+      anti_spam_messages: document.getElementById('anti_spam_messages').value,
+      anti_spam_seconds: document.getElementById('anti_spam_seconds').value,
+      anti_links: document.getElementById('toggle-anti_links').checked ? 'true' : 'false',
+      anti_invites: document.getElementById('toggle-anti_invites').checked ? 'true' : 'false',
+      anti_attachments: document.getElementById('toggle-anti_attachments').checked ? 'true' : 'false',
+      anti_ghostping: document.getElementById('toggle-anti_ghostping').checked ? 'true' : 'false',
+      anti_massmention: document.getElementById('toggle-anti_massmention').checked ? (document.getElementById('anti_massmention').value || '5') : '0',
+      max_lines: document.getElementById('toggle-max_lines').checked ? (document.getElementById('max_lines').value || '10') : '0',
+    };
+    setBtnLoading('btn-saveFilters', true);
+    apiFetch(payload, function(ok) {
+      setBtnLoading('btn-saveFilters', false);
+      toast(ok ? 'Filters saved!' : 'Failed to save', ok ? 'success' : 'error');
+    });
+  };
+
+  window.savePunishment = function() {
+    var payload = {
+      op: 'savePunishment',
+      strikes: document.getElementById('strikesSlider').value,
+      action_type: document.getElementById('selectedAction').value,
+      modlog_channel: document.getElementById('modlogChannel').value,
+    };
+    setBtnLoading('btn-savePunishment', true);
+    apiFetch(payload, function(ok) {
+      setBtnLoading('btn-savePunishment', false);
+      toast(ok ? 'Punishment settings saved!' : 'Failed to save', ok ? 'success' : 'error');
+    });
+  };
+
+  window.saveWhitelist = function() {
+    var selected = [];
+    document.querySelectorAll('#chList .am-ch-item.selected').forEach(function(el) {
+      selected.push(el.dataset.id);
+    });
+    setBtnLoading('btn-saveWhitelist', true);
+    apiFetch({ op: 'saveWhitelist', wh_channels: selected }, function(ok) {
+      setBtnLoading('btn-saveWhitelist', false);
+      toast(ok ? 'Whitelist saved — ' + selected.length + ' channel(s)' : 'Failed to save', ok ? 'success' : 'error');
+    });
+  };
+
+  /* ── API helper ────────────────────────────────────────────── */
+  function apiFetch(data, cb) {
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(r) { cb(r.ok); })
+    .catch(function() { cb(false); });
+  }
+
+  /* ── Button loading state ──────────────────────────────────── */
+  function setBtnLoading(id, loading) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    btn.disabled = loading;
+    btn.innerHTML = loading ? '<i class="fa fa-spinner fa-spin"></i> Saving…' : '<i class="fa fa-save"></i> ' + (id === 'btn-saveFilters' ? 'Save Filters' : id === 'btn-savePunishment' ? 'Save Punishment' : 'Save Whitelist');
+  }
+
+  /* ── Toast ─────────────────────────────────────────────────── */
+  window.toast = function(msg, type) {
+    var area = document.getElementById('amToastArea');
+    var t = document.createElement('div');
+    t.className = 'am-toast ' + (type || 'success');
+    t.innerHTML = '<i class="am-toast-icon fa ' + (type === 'error' ? 'fa-times-circle' : 'fa-check-circle') + '"></i><span>' + msg + '</span>';
+    area.appendChild(t);
+    setTimeout(function() {
+      t.classList.add('out');
+      setTimeout(function() { t.remove(); }, 240);
+    }, 2800);
+  };
+})();
+</script>
+
+<%- include('../includes/footer') %>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('../includes/head') %>
+<body>
+<% locals.activePage = 'logs'; %>
+<%- include('../includes/sidebar') %>
+<%- include('../includes/header') %>
+
+<style>
+  .main-content { margin-left: var(--sidebar-w); padding-top: var(--topbar-h); min-height: 100vh; }
+  .page-inner { padding: 32px 28px; }
+  .page-header { margin-bottom: 28px; }
+  .page-header .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .page-header .breadcrumb a:hover { color: var(--accent); }
+  .page-header .breadcrumb i { font-size: 10px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .settings-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; max-width: 600px; }
+  .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .card-header-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-glow); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 14px; }
+  .card-header h3 { font-size: 15px; font-weight: 600; margin: 0; }
+  .card-body { padding: 20px; }
+  .card-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
+  .log-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+</style>
+
+<div class="main-content">
+  <div class="page-inner">
+    <div class="page-header">
+      <div class="breadcrumb">
+        <a href="/selector">Servers</a>
+        <i class="fa fa-chevron-right"></i>
+        <a href="/manage/<%= guild.id %>/basic"><%= guild.name %></a>
+        <i class="fa fa-chevron-right"></i>
+        <span>Logs</span>
+      </div>
+      <h1>Log Channels</h1>
+    </div>
+
+    <div class="settings-card">
+      <div class="card-header">
+        <div class="card-header-icon"><i class="fa fa-scroll"></i></div>
+        <h3>Logging Configuration</h3>
+      </div>
+      <form action="/manage/<%= guild.id %>/logs" method="POST">
+        <div class="card-body">
+
+          <div class="form-group">
+            <div class="log-desc">Where to send moderation actions (ban, kick, warn, etc.)</div>
+            <label>Mod Log Channel</label>
+            <select name="modlog_channel">
+              <option value="">-- None --</option>
+              <% if(guild.modlog_channel && bot.channels.cache.has(guild.modlog_channel)){ %>
+                <option selected>#<%= bot.channels.cache.get(guild.modlog_channel).name %></option>
+                <% guild.channels.cache.filter((ch) => ch.type === 0 && ch.id !== guild.modlog_channel).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } else { %>
+                <% guild.channels.cache.filter((ch) => ch.type === 0).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="log-desc">Where to send edited/deleted message logs</div>
+            <label>Message Log Channel</label>
+            <select name="message_log_channel">
+              <option value="">-- None --</option>
+              <% if(guild.message_log_channel && bot.channels.cache.has(guild.message_log_channel)){ %>
+                <option selected>#<%= bot.channels.cache.get(guild.message_log_channel).name %></option>
+                <% guild.channels.cache.filter((ch) => ch.type === 0 && ch.id !== guild.message_log_channel).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } else { %>
+                <% guild.channels.cache.filter((ch) => ch.type === 0).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="log-desc">Where to send member join/leave logs</div>
+            <label>Member Log Channel</label>
+            <select name="member_log_channel">
+              <option value="">-- None --</option>
+              <% if(guild.member_log_channel && bot.channels.cache.has(guild.member_log_channel)){ %>
+                <option selected>#<%= bot.channels.cache.get(guild.member_log_channel).name %></option>
+                <% guild.channels.cache.filter((ch) => ch.type === 0 && ch.id !== guild.member_log_channel).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } else { %>
+                <% guild.channels.cache.filter((ch) => ch.type === 0).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+
+        </div>
+        <div class="card-footer">
+          <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Save</button>
+        </div>
+      </form>
+    </div>
+
+    <%- include('../includes/footer') %>
+  </div>
+</div>
+</body>
+</html>

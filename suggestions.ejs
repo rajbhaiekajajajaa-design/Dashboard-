@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('../includes/head') %>
+<body>
+<% locals.activePage = 'suggestions'; %>
+<%- include('../includes/sidebar') %>
+<%- include('../includes/header') %>
+
+<style>
+  .main-content { margin-left: var(--sidebar-w); padding-top: var(--topbar-h); min-height: 100vh; }
+  .page-inner { padding: 32px 28px; }
+  .page-header { margin-bottom: 28px; }
+  .page-header .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .page-header .breadcrumb a:hover { color: var(--accent); }
+  .page-header .breadcrumb i { font-size: 10px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .settings-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; max-width: 600px; }
+  .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .card-header-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-glow); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 14px; }
+  .card-header h3 { font-size: 15px; font-weight: 600; margin: 0; }
+  .card-body { padding: 20px; }
+  .card-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+  .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .status-badge.enabled { background: rgba(59,165,93,0.15); color: var(--success); }
+  .status-badge.disabled { background: rgba(237,66,69,0.1); color: var(--danger); }
+  .log-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+</style>
+
+<div class="main-content">
+  <div class="page-inner">
+    <div class="page-header">
+      <div class="breadcrumb">
+        <a href="/selector">Servers</a>
+        <i class="fa fa-chevron-right"></i>
+        <a href="/manage/<%= guild.id %>/basic"><%= guild.name %></a>
+        <i class="fa fa-chevron-right"></i>
+        <span>Suggestions</span>
+      </div>
+      <h1>Suggestions System</h1>
+    </div>
+
+    <div class="settings-card">
+      <div class="card-header">
+        <div class="card-header-icon"><i class="fa fa-lightbulb"></i></div>
+        <h3>Suggestions</h3>
+        <% if(guild.suggestions?.enabled) { %>
+          <span class="status-badge enabled" style="margin-left:auto"><i class="fa fa-circle" style="font-size:8px"></i> Enabled</span>
+        <% } else { %>
+          <span class="status-badge disabled" style="margin-left:auto"><i class="fa fa-circle" style="font-size:8px"></i> Disabled</span>
+        <% } %>
+      </div>
+      <form action="/manage/<%= guild.id %>/suggestions" method="POST">
+        <div class="card-body">
+
+          <div class="form-group">
+            <div class="log-desc">Where members submit suggestions</div>
+            <label>Suggestions Channel</label>
+            <select name="channel">
+              <option value="">-- None --</option>
+              <% if(guild.suggestions?.channel_id && bot.channels.cache.has(guild.suggestions.channel_id)){ %>
+                <option selected>#<%= bot.channels.cache.get(guild.suggestions.channel_id).name %></option>
+                <% guild.channels.cache.filter((ch) => ch.type === 0 && ch.id !== guild.suggestions.channel_id).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } else { %>
+                <% guild.channels.cache.filter((ch) => ch.type === 0).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="log-desc">Where approved suggestions are moved</div>
+            <label>Approved Channel</label>
+            <select name="approved_channel">
+              <option value="">-- None --</option>
+              <% if(guild.suggestions?.approved_channel && bot.channels.cache.has(guild.suggestions.approved_channel)){ %>
+                <option selected>#<%= bot.channels.cache.get(guild.suggestions.approved_channel).name %></option>
+                <% guild.channels.cache.filter((ch) => ch.type === 0 && ch.id !== guild.suggestions.approved_channel).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } else { %>
+                <% guild.channels.cache.filter((ch) => ch.type === 0).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="log-desc">Where rejected suggestions are moved</div>
+            <label>Rejected Channel</label>
+            <select name="rejected_channel">
+              <option value="">-- None --</option>
+              <% if(guild.suggestions?.rejected_channel && bot.channels.cache.has(guild.suggestions.rejected_channel)){ %>
+                <option selected>#<%= bot.channels.cache.get(guild.suggestions.rejected_channel).name %></option>
+                <% guild.channels.cache.filter((ch) => ch.type === 0 && ch.id !== guild.suggestions.rejected_channel).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } else { %>
+                <% guild.channels.cache.filter((ch) => ch.type === 0).forEach((ch) => { %>
+                  <option>#<%= ch.name %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+
+        </div>
+        <div class="card-footer">
+          <% if(guild.suggestions?.enabled) { %>
+            <button type="submit" name="suggestionsDisable" class="btn btn-danger"><i class="fa fa-times"></i> Disable</button>
+            <button type="submit" name="suggestionsUpdate" class="btn btn-primary"><i class="fa fa-save"></i> Save</button>
+          <% } else { %>
+            <button type="submit" name="suggestionsEnable" class="btn btn-success"><i class="fa fa-check"></i> Enable & Save</button>
+          <% } %>
+        </div>
+      </form>
+    </div>
+
+    <%- include('../includes/footer') %>
+  </div>
+</div>
+</body>
+</html>

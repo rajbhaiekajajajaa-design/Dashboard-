@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('../includes/head') %>
+<body>
+<% locals.activePage = 'leaderboard'; %>
+<%- include('../includes/sidebar') %>
+<%- include('../includes/header') %>
+
+<style>
+  .main-content { margin-left: var(--sidebar-w); padding-top: var(--topbar-h); min-height: 100vh; }
+  .page-inner { padding: 32px 28px; }
+  .page-header { margin-bottom: 28px; }
+  .page-header .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .page-header .breadcrumb a { color: var(--text-muted); text-decoration: none; }
+  .page-header .breadcrumb a:hover { color: var(--accent); }
+  .page-header .breadcrumb i { font-size: 10px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .page-header p { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+
+  /* Podium */
+  .podium { display: flex; justify-content: center; align-items: flex-end; gap: 16px; margin-bottom: 36px; flex-wrap: wrap; }
+  .podium-card {
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 24px 16px; min-width: 130px;
+    position: relative; transition: transform .2s ease;
+  }
+  .podium-card:hover { transform: translateY(-4px); }
+  .podium-card.rank-1 { border-color: rgba(255,196,0,0.45); background: linear-gradient(160deg, rgba(255,196,0,0.08), var(--bg-card)); min-width: 150px; padding-bottom: 20px; }
+  .podium-card.rank-2 { border-color: rgba(192,192,192,0.4); background: linear-gradient(160deg, rgba(192,192,192,0.06), var(--bg-card)); }
+  .podium-card.rank-3 { border-color: rgba(205,127,50,0.4); background: linear-gradient(160deg, rgba(205,127,50,0.06), var(--bg-card)); }
+  .podium-crown { font-size: 22px; margin-bottom: 6px; }
+  .podium-avatar { width: 60px; height: 60px; border-radius: 50%; border: 3px solid var(--border); margin-bottom: 10px; object-fit: cover; }
+  .rank-1 .podium-avatar { border-color: #ffc400; width: 72px; height: 72px; }
+  .rank-2 .podium-avatar { border-color: #c0c0c0; }
+  .rank-3 .podium-avatar { border-color: #cd7f32; }
+  .podium-rank { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .rank-1 .podium-rank { color: #ffc400; }
+  .rank-2 .podium-rank { color: #c0c0c0; }
+  .rank-3 .podium-rank { color: #cd7f32; }
+  .podium-name { font-size: 14px; font-weight: 700; color: var(--text-primary); text-align: center; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .podium-level { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .podium-xp { font-size: 12px; color: var(--accent); font-weight: 600; margin-top: 2px; }
+
+  /* Table */
+  .lb-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .lb-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .lb-card-header-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-glow); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 14px; }
+  .lb-card-header h3 { font-size: 15px; font-weight: 600; margin: 0; }
+  .lb-card-header span { margin-left: auto; font-size: 12px; color: var(--text-muted); }
+  .lb-table { width: 100%; border-collapse: collapse; }
+  .lb-table th { padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  .lb-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .lb-table tr:last-child td { border-bottom: none; }
+  .lb-table tr:hover td { background: var(--bg-hover); }
+  .lb-table tr.top-3 td { background: rgba(var(--accent-rgb),0.04); }
+  .rank-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 8px;
+    font-size: 13px; font-weight: 700;
+    background: var(--bg-tertiary); color: var(--text-muted);
+  }
+  .rank-badge.gold   { background: rgba(255,196,0,0.15); color: #ffc400; }
+  .rank-badge.silver { background: rgba(192,192,192,0.15); color: #c0c0c0; }
+  .rank-badge.bronze { background: rgba(205,127,50,0.15); color: #cd7f32; }
+  .user-cell { display: flex; align-items: center; gap: 10px; }
+  .user-cell img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+  .user-cell-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .user-cell-id { font-size: 11px; color: var(--text-muted); }
+  .level-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--accent-glow); color: var(--accent); padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .xp-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .xp-bar { flex: 1; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; max-width: 100px; }
+  .xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #7c5cfc); border-radius: 3px; }
+  .xp-val { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .msg-count { font-size: 13px; color: var(--text-secondary); }
+  .empty-state { padding: 48px 20px; text-align: center; color: var(--text-muted); }
+  .empty-state i { font-size: 40px; margin-bottom: 12px; display: block; opacity: .4; }
+  .empty-state p { font-size: 14px; }
+</style>
+
+<div class="main-content">
+  <div class="page-inner">
+
+    <div class="page-header">
+      <div class="breadcrumb">
+        <a href="/selector">My Servers</a>
+        <i class="fa fa-chevron-right"></i>
+        <a href="/manage/<%= guild.id %>/basic"><%= guild.name %></a>
+        <i class="fa fa-chevron-right"></i>
+        <span>Leaderboard</span>
+      </div>
+      <h1><i class="fa fa-trophy" style="color:#ffc400;margin-right:8px"></i>XP Leaderboard</h1>
+      <p>Top members ranked by level and XP in <strong><%= guild.name %></strong></p>
+    </div>
+
+    <% if (entries.length === 0) { %>
+      <div class="lb-card">
+        <div class="empty-state">
+          <i class="fa fa-chart-bar"></i>
+          <p>No XP data yet. Members earn XP by chatting in this server.</p>
+        </div>
+      </div>
+    <% } else { %>
+
+    <!-- Podium (top 3) -->
+    <% if (entries.length >= 1) { %>
+    <div class="podium">
+      <% if (entries[1]) { %>
+      <div class="podium-card rank-2">
+        <div class="podium-crown">🥈</div>
+        <img class="podium-avatar" src="<%= entries[1].avatar %>" alt="<%= entries[1].username %>" onerror="this.src='https://cdn.discordapp.com/embed/avatars/1.png'" loading="lazy" />
+        <div class="podium-rank">#2</div>
+        <div class="podium-name"><%= entries[1].username %></div>
+        <div class="podium-level">Level <%= entries[1].level %></div>
+        <div class="podium-xp"><%= entries[1].xp.toLocaleString() %> XP</div>
+      </div>
+      <% } %>
+      <div class="podium-card rank-1">
+        <div class="podium-crown">👑</div>
+        <img class="podium-avatar" src="<%= entries[0].avatar %>" alt="<%= entries[0].username %>" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'" loading="lazy" />
+        <div class="podium-rank">#1</div>
+        <div class="podium-name"><%= entries[0].username %></div>
+        <div class="podium-level">Level <%= entries[0].level %></div>
+        <div class="podium-xp"><%= entries[0].xp.toLocaleString() %> XP</div>
+      </div>
+      <% if (entries[2]) { %>
+      <div class="podium-card rank-3">
+        <div class="podium-crown">🥉</div>
+        <img class="podium-avatar" src="<%= entries[2].avatar %>" alt="<%= entries[2].username %>" onerror="this.src='https://cdn.discordapp.com/embed/avatars/2.png'" loading="lazy" />
+        <div class="podium-rank">#3</div>
+        <div class="podium-name"><%= entries[2].username %></div>
+        <div class="podium-level">Level <%= entries[2].level %></div>
+        <div class="podium-xp"><%= entries[2].xp.toLocaleString() %> XP</div>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+
+    <!-- Full table -->
+    <div class="lb-card">
+      <div class="lb-card-header">
+        <div class="lb-card-header-icon"><i class="fa fa-list-ol"></i></div>
+        <h3>Full Rankings</h3>
+        <span><%= entries.length %> member<%= entries.length !== 1 ? 's' : '' %></span>
+      </div>
+      <% var maxXp = entries[0] ? entries[0].xp : 1; %>
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Member</th>
+            <th>Level</th>
+            <th>XP</th>
+            <th>Messages</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% entries.forEach(function(e) { %>
+          <tr class="<%= e.rank <= 3 ? 'top-3' : '' %>">
+            <td>
+              <% if (e.rank === 1) { %>
+                <span class="rank-badge gold">1</span>
+              <% } else if (e.rank === 2) { %>
+                <span class="rank-badge silver">2</span>
+              <% } else if (e.rank === 3) { %>
+                <span class="rank-badge bronze">3</span>
+              <% } else { %>
+                <span class="rank-badge"><%= e.rank %></span>
+              <% } %>
+            </td>
+            <td>
+              <div class="user-cell">
+                <img src="<%= e.avatar %>" alt="<%= e.username %>" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'" loading="lazy" />
+                <div>
+                  <div class="user-cell-name"><%= e.username %></div>
+                  <div class="user-cell-id"><%= e.member_id %></div>
+                </div>
+              </div>
+            </td>
+            <td><span class="level-badge"><i class="fa fa-star"></i> <%= e.level %></span></td>
+            <td>
+              <div class="xp-bar-wrap">
+                <div class="xp-bar">
+                  <div class="xp-bar-fill" style="width:<%= Math.min(100, Math.round((e.xp / maxXp) * 100)) %>%"></div>
+                </div>
+                <span class="xp-val"><%= e.xp.toLocaleString() %></span>
+              </div>
+            </td>
+            <td><span class="msg-count"><%= e.messages.toLocaleString() %></span></td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+
+    <% } %>
+  </div>
+</div>
+
+</body>
+</html>

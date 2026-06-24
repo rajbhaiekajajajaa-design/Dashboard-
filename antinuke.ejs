@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('../includes/head') %>
+<body>
+<% locals.activePage = 'antinuke'; %>
+<%- include('../includes/sidebar') %>
+<%- include('../includes/header') %>
+
+<style>
+  .main-content { margin-left: var(--sidebar-w); padding-top: var(--topbar-h); min-height: 100vh; }
+  .page-inner { padding: 32px 28px; }
+  .page-header { margin-bottom: 28px; }
+  .page-header .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .page-header .breadcrumb a:hover { color: var(--accent); }
+  .page-header .breadcrumb i { font-size: 10px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
+  .settings-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .card-header-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .card-header-icon.red { background: rgba(237,66,69,0.15); color: var(--danger); }
+  .card-header-icon.yellow { background: rgba(250,166,26,0.15); color: var(--warning); }
+  .card-header-icon.blue { background: var(--accent-glow); color: var(--accent); }
+  .card-header h3 { font-size: 15px; font-weight: 600; margin: 0; }
+  .card-body { padding: 20px; }
+  .card-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
+  .toggle-group { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .toggle-group:last-child { border-bottom: none; }
+  .toggle-label { font-size: 14px; color: var(--text-secondary); }
+  .toggle { position: relative; width: 44px; height: 24px; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--bg-tertiary); border-radius: 24px; transition: .2s; border: 1px solid var(--border); }
+  .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 2px; bottom: 2px; background: var(--text-muted); border-radius: 50%; transition: .2s; }
+  .toggle input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(20px); background: #fff; }
+  .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .status-badge.enabled { background: rgba(59,165,93,0.15); color: var(--success); }
+  .status-badge.disabled { background: rgba(237,66,69,0.1); color: var(--danger); }
+  .threshold-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .threshold-row label { margin: 0; min-width: 160px; font-size: 13px; color: var(--text-secondary); }
+  .threshold-row input { width: 80px; }
+</style>
+
+<div class="main-content">
+  <div class="page-inner">
+    <div class="page-header">
+      <div class="breadcrumb">
+        <a href="/selector">Servers</a>
+        <i class="fa fa-chevron-right"></i>
+        <a href="/manage/<%= guild.id %>/basic"><%= guild.name %></a>
+        <i class="fa fa-chevron-right"></i>
+        <span>Anti-Nuke</span>
+      </div>
+      <h1>Anti-Nuke Protection</h1>
+    </div>
+
+    <form action="/manage/<%= guild.id %>/antinuke" method="POST">
+    <div class="settings-grid">
+
+      <!-- MASTER TOGGLE -->
+      <div class="settings-card">
+        <div class="card-header">
+          <div class="card-header-icon red"><i class="fa fa-shield-alt"></i></div>
+          <h3>Anti-Nuke</h3>
+          <% if(guild.antinuke?.enabled) { %>
+            <span class="status-badge enabled" style="margin-left:auto"><i class="fa fa-circle" style="font-size:8px"></i> Enabled</span>
+          <% } else { %>
+            <span class="status-badge disabled" style="margin-left:auto"><i class="fa fa-circle" style="font-size:8px"></i> Disabled</span>
+          <% } %>
+        </div>
+        <div class="card-body">
+          <div class="toggle-group">
+            <span class="toggle-label">Enable Anti-Nuke</span>
+            <label class="toggle">
+              <input type="checkbox" name="enabled" <%= guild.antinuke?.enabled ? 'checked' : '' %>>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="form-group" style="margin-top:16px">
+            <label>Log Channel</label>
+            <select name="log_channel">
+              <option value="">-- None --</option>
+              <% if(guild.antinuke?.log_channel && bot.channels.cache.has(guild.antinuke.log_channel)){ %>
+                <option selected>#<%= bot.channels.cache.get(guild.antinuke.log_channel).name %></option>
+                <% guild.channels.cache.filter((ch) => ch.type === 0 && ch.id !== guild.antinuke.log_channel).forEach((ch) => { %><option>#<%= ch.name %></option><% }); %>
+              <% } else { %>
+                <% guild.channels.cache.filter((ch) => ch.type === 0).forEach((ch) => { %><option>#<%= ch.name %></option><% }); %>
+              <% } %>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Punishment</label>
+            <select name="punishment">
+              <option <%= guild.antinuke?.punishment === 'REMOVE_ROLES' ? 'selected' : '' %>>REMOVE_ROLES</option>
+              <option <%= guild.antinuke?.punishment === 'KICK' ? 'selected' : '' %>>KICK</option>
+              <option <%= guild.antinuke?.punishment === 'BAN' ? 'selected' : '' %>>BAN</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROTECTION TOGGLES -->
+      <div class="settings-card">
+        <div class="card-header">
+          <div class="card-header-icon yellow"><i class="fa fa-lock"></i></div>
+          <h3>Protection Filters</h3>
+        </div>
+        <div class="card-body">
+          <% const protections = [
+            ['anti_ban', 'Anti Ban', guild.antinuke?.anti_ban],
+            ['anti_kick', 'Anti Kick', guild.antinuke?.anti_kick],
+            ['anti_channel_delete', 'Anti Channel Delete', guild.antinuke?.anti_channel_delete],
+            ['anti_channel_create', 'Anti Channel Create', guild.antinuke?.anti_channel_create],
+            ['anti_role_delete', 'Anti Role Delete', guild.antinuke?.anti_role_delete],
+            ['anti_role_create', 'Anti Role Create', guild.antinuke?.anti_role_create],
+            ['anti_webhook_create', 'Anti Webhook Create', guild.antinuke?.anti_webhook_create],
+            ['anti_bot_add', 'Anti Bot Add', guild.antinuke?.anti_bot_add],
+            ['anti_raid', 'Anti Raid', guild.antinuke?.anti_raid],
+            ['anti_message_spam', 'Anti Message Spam', guild.antinuke?.anti_message_spam],
+            ['anti_mention_spam', 'Anti Mention Spam', guild.antinuke?.anti_mention_spam],
+            ['anti_links', 'Anti Links', guild.antinuke?.anti_links],
+          ]; %>
+          <% protections.forEach(([name, label, checked]) => { %>
+          <div class="toggle-group">
+            <span class="toggle-label"><%= label %></span>
+            <label class="toggle">
+              <input type="checkbox" name="<%= name %>" <%= checked ? 'checked' : '' %>>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <% }); %>
+        </div>
+      </div>
+
+      <!-- THRESHOLDS -->
+      <div class="settings-card">
+        <div class="card-header">
+          <div class="card-header-icon blue"><i class="fa fa-sliders-h"></i></div>
+          <h3>Thresholds</h3>
+        </div>
+        <div class="card-body">
+          <div class="threshold-row">
+            <label>Ban Threshold</label>
+            <input type="number" name="ban_threshold" value="<%= guild.antinuke?.ban_threshold ?? 3 %>" min="1">
+          </div>
+          <div class="threshold-row">
+            <label>Kick Threshold</label>
+            <input type="number" name="kick_threshold" value="<%= guild.antinuke?.kick_threshold ?? 3 %>" min="1">
+          </div>
+          <div class="threshold-row">
+            <label>Channel Threshold</label>
+            <input type="number" name="channel_threshold" value="<%= guild.antinuke?.channel_threshold ?? 3 %>" min="1">
+          </div>
+          <div class="threshold-row">
+            <label>Role Threshold</label>
+            <input type="number" name="role_threshold" value="<%= guild.antinuke?.role_threshold ?? 3 %>" min="1">
+          </div>
+          <div class="threshold-row">
+            <label>Time Window (sec)</label>
+            <input type="number" name="time_window" value="<%= guild.antinuke?.time_window ?? 10 %>" min="1">
+          </div>
+          <div class="threshold-row">
+            <label>Raid Threshold</label>
+            <input type="number" name="raid_threshold" value="<%= guild.antinuke?.raid_threshold ?? 5 %>" min="1">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:20px">
+      <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Save All Changes</button>
+    </div>
+    </form>
+
+    <%- include('../includes/footer') %>
+  </div>
+</div>
+</body>
+</html>

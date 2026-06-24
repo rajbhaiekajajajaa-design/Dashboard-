@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('../includes/head') %>
+<body>
+<% locals.activePage = 'ticket-logs'; %>
+<%- include('../includes/sidebar') %>
+<%- include('../includes/header') %>
+
+<style>
+  .main-content { margin-left: var(--sidebar-w); padding-top: var(--topbar-h); min-height: 100vh; }
+  .page-inner { padding: 28px; display: flex; flex-direction: column; gap: 20px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .page-header p { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px; }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+  .card-title i { color: var(--accent); }
+
+  /* Stats */
+  .stats-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .stat-card {
+    flex: 1; min-width: 110px; background: var(--bg-tertiary);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px; text-align: center;
+  }
+  .stat-card .stat-num { font-size: 24px; font-weight: 800; }
+  .stat-card .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; }
+  .stat-open   .stat-num { color: var(--accent); }
+  .stat-close  .stat-num { color: #ffb400; }
+  .stat-claim  .stat-num { color: var(--success); }
+  .stat-delete .stat-num { color: var(--danger); }
+  .stat-total  .stat-num { color: var(--text-primary); }
+
+  /* Filters */
+  .filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-btn {
+    padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); background: var(--bg-tertiary);
+    color: var(--text-secondary); transition: all .2s; text-decoration: none;
+  }
+  .filter-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .search-box {
+    flex: 1; min-width: 180px; padding: 7px 12px;
+    background: var(--bg-tertiary); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-primary); font-size: 13px;
+  }
+  .search-box:focus { outline: none; border-color: var(--accent); }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state i { font-size: 48px; margin-bottom: 16px; opacity: .4; display: block; }
+  .empty-state p { font-size: 14px; }
+
+  /* Log table */
+  .log-table { width: 100%; border-collapse: collapse; }
+  .log-table th {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--text-muted); padding: 0 12px 10px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .log-table td {
+    padding: 12px; font-size: 13px; border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .log-row:last-child td { border-bottom: none; }
+  .log-row:hover td { background: var(--bg-tertiary); }
+
+  .event-badge {
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .5px; white-space: nowrap;
+  }
+  .event-open   { background: rgba(var(--accent-rgb),0.15); color: var(--accent);   border: 1px solid rgba(var(--accent-rgb),0.3); }
+  .event-close  { background: rgba(255,180,0,0.15);  color: #ffb400;         border: 1px solid rgba(255,180,0,0.3); }
+  .event-claim  { background: rgba(59,165,93,0.15);  color: var(--success);  border: 1px solid rgba(59,165,93,0.3); }
+  .event-delete { background: rgba(237,66,69,0.12);  color: var(--danger);   border: 1px solid rgba(237,66,69,0.25); }
+
+  .user-cell { display: flex; flex-direction: column; }
+  .user-cell .uname { font-weight: 600; }
+  .user-cell .uid   { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+
+  .ticket-name { font-family: monospace; font-size: 12px; color: var(--text-secondary); }
+  .cat-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 6px;
+    background: var(--bg-tertiary); border: 1px solid var(--border);
+    font-size: 11px; color: var(--text-muted); white-space: nowrap;
+  }
+  .reason-cell { color: var(--text-muted); font-size: 12px; max-width: 180px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .time-cell { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+
+  #no-results { display: none; }
+
+  .btn-transcript {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    background: rgba(var(--accent-rgb),0.15); color: var(--accent);
+    border: 1px solid rgba(var(--accent-rgb),0.3); text-decoration: none; white-space: nowrap;
+    transition: background .2s;
+  }
+  .btn-transcript:hover { background: rgba(var(--accent-rgb),0.3); }
+
+  /* Active Tickets */
+  .active-ticket-list { display: flex; flex-direction: column; gap: 10px; }
+  .active-ticket-item {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    padding: 12px 16px; background: var(--bg-tertiary);
+    border: 1px solid var(--border); border-radius: 10px;
+  }
+  .active-ticket-item:hover { border-color: var(--accent); }
+  .ticket-info { display: flex; flex-direction: column; gap: 2px; }
+  .ticket-info .tname { font-size: 13px; font-weight: 700; font-family: monospace; }
+  .ticket-info .tmeta { font-size: 11px; color: var(--text-muted); }
+  .ticket-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .type-badge {
+    padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .type-standard { background: rgba(var(--accent-rgb),0.12); color: var(--accent); border: 1px solid rgba(var(--accent-rgb),0.3); }
+  .type-pro      { background: rgba(59,165,93,0.12); color: var(--success); border: 1px solid rgba(59,165,93,0.3); }
+  .claimed-badge {
+    padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 700;
+    background: rgba(59,165,93,0.12); color: var(--success); border: 1px solid rgba(59,165,93,0.3);
+  }
+  .btn-action {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: none; transition: opacity .2s; white-space: nowrap;
+  }
+  .btn-claim  { background: rgba(59,165,93,0.2); color: var(--success); border: 1px solid rgba(59,165,93,0.35); }
+  .btn-claim:hover  { background: rgba(59,165,93,0.35); }
+  .btn-delete { background: rgba(237,66,69,0.15); color: var(--danger);  border: 1px solid rgba(237,66,69,0.3); }
+  .btn-delete:hover { background: rgba(237,66,69,0.3); }
+</style>
+
+<div class="main-content">
+  <div class="page-inner">
+
+    <div class="page-header">
+      <h1><i class="fa fa-ticket-alt" style="color:var(--accent);margin-right:8px"></i>Ticket</h1>
+      <p>Manage active tickets and view all ticket activity in this server.</p>
+    </div>
+
+    <!-- Active Tickets -->
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <span><i class="fa fa-inbox"></i> Active Tickets <span style="margin-left:6px;background:var(--accent);color:#fff;padding:1px 8px;border-radius:20px;font-size:11px;"><%= activeTickets.length %></span></span>
+        <% if (activeTickets.length > 0) { %>
+          <form method="POST" action="/manage/<%= guild.id %>/tickets/delete-all" style="margin:0;"
+            onsubmit="return confirm('<:warning:1512413683245121718> WARNING: This will permanently delete ALL <%= activeTickets.length %> open ticket channel(s) and remove all their log entries. This action CANNOT be undone.\n\nType OK to confirm.');">
+            <button type="submit" class="btn-action btn-delete" style="font-size:12px;padding:5px 14px;">
+              <i class="fa fa-trash"></i> Delete All Tickets
+            </button>
+          </form>
+        <% } %>
+      </div>
+      <% if (activeTickets.length === 0) { %>
+        <div class="empty-state" style="padding:30px 20px;">
+          <i class="fa fa-check-circle" style="font-size:32px;margin-bottom:10px;opacity:.4;display:block;"></i>
+          <p>No active tickets right now.</p>
+        </div>
+      <% } else { %>
+        <div class="active-ticket-list">
+          <% activeTickets.forEach(function(ticket) { %>
+            <%
+              const openedDateStr = ticket.createdAt ? new Date(ticket.createdAt).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+              }) : '—';
+            %>
+            <div class="active-ticket-item">
+              <div class="ticket-info">
+                <span class="tname">#<%= ticket.channelName %></span>
+                <span class="tmeta">
+                  Opened by <strong><%= ticket.userTag %></strong>
+                  &nbsp;·&nbsp; Category: <strong><%= ticket.category %></strong>
+                  &nbsp;·&nbsp; <%= openedDateStr %>
+                </span>
+              </div>
+              <div class="ticket-actions">
+                <span class="type-badge type-<%= ticket.type %>"><%= ticket.type === 'pro' ? 'Ticket Pro' : 'Standard' %></span>
+                <% if (ticket.isClaimed) { %>
+                  <span class="claimed-badge">🤝 Claimed</span>
+                <% } %>
+                <form method="POST" action="/manage/<%= guild.id %>/ticket/<%= ticket.channelId %>/claim" style="margin:0;" onsubmit="return confirm('Claim this ticket?');">
+                  <button type="submit" class="btn-action btn-claim"><i class="fa fa-hand-paper"></i> Claim</button>
+                </form>
+                <form method="POST" action="/manage/<%= guild.id %>/ticket/<%= ticket.channelId %>/delete" style="margin:0;" onsubmit="return confirm('Delete ticket #<%= ticket.channelName %>? This cannot be undone.');">
+                  <button type="submit" class="btn-action btn-delete"><i class="fa fa-trash"></i> Delete</button>
+                </form>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+
+    <%
+      const totalLogs  = logs.length;
+      const openLogs   = logs.filter(l => l.event_type === 'open').length;
+      const closeLogs  = logs.filter(l => l.event_type === 'close').length;
+      const claimLogs  = logs.filter(l => l.event_type === 'claim').length;
+      const deleteLogs = logs.filter(l => l.event_type === 'delete').length;
+    %>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card stat-total">
+        <div class="stat-num"><%= totalLogs %></div>
+        <div class="stat-label">Total Events</div>
+      </div>
+      <div class="stat-card stat-open">
+        <div class="stat-num"><%= openLogs %></div>
+        <div class="stat-label">Opened</div>
+      </div>
+      <div class="stat-card stat-close">
+        <div class="stat-num"><%= closeLogs %></div>
+        <div class="stat-label">Closed</div>
+      </div>
+      <div class="stat-card stat-claim">
+        <div class="stat-num"><%= claimLogs %></div>
+        <div class="stat-label">Claimed</div>
+      </div>
+      <div class="stat-card stat-delete">
+        <div class="stat-num"><%= deleteLogs %></div>
+        <div class="stat-label">Deleted</div>
+      </div>
+    </div>
+
+    <!-- Log Table -->
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <span><i class="fa fa-list"></i> Event History</span>
+        <% if (logs.length > 0) { %>
+          <form method="POST" action="/manage/<%= guild.id %>/ticket-logs/clear-all" style="margin:0;"
+            onsubmit="return confirm('<:warning:1512413683245121718> This will permanently delete ALL <%= logs.length %> log entries from the history. This cannot be undone.\n\nPress OK to confirm.');">
+            <button type="submit" style="background:transparent;border:1px solid rgba(237,66,69,0.5);color:var(--danger);border-radius:7px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;">
+              <i class="fa fa-trash-alt"></i> Clear All Logs
+            </button>
+          </form>
+        <% } %>
+      </div>
+
+      <div class="filter-row">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="open">Opened</button>
+        <button class="filter-btn" data-filter="close">Closed</button>
+        <button class="filter-btn" data-filter="claim">Claimed</button>
+        <button class="filter-btn" data-filter="delete">Deleted</button>
+        <input class="search-box" id="log-search" placeholder="Search by user, ticket, or category…" />
+      </div>
+
+      <%
+        const activeTicketMap = {};
+        activeTickets.forEach(function(t) { activeTicketMap[t.channelName] = t.channelId; });
+      %>
+      <% if (logs.length === 0) { %>
+        <div class="empty-state">
+          <i class="fa fa-inbox"></i>
+          <p>No ticket events recorded yet.<br>Events will appear here when users open, close, claim, or delete tickets.</p>
+        </div>
+      <% } else { %>
+        <div style="overflow-x:auto;">
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Ticket</th>
+                <th>Opened By</th>
+                <th>Actor</th>
+                <th>Category</th>
+                <th>Reason</th>
+                <th>Time</th>
+                <th>Transcript</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="log-list">
+              <% logs.forEach(function(log) { %>
+                <%
+                  const eventClass = `event-${log.event_type}`;
+                  const _labels = { open: 'Opened', close: 'Closed', claim: 'Claimed', delete: 'Deleted' };
+                  const eventLabel = _labels[log.event_type] || (log.event_type.charAt(0).toUpperCase() + log.event_type.slice(1));
+                  const actorDisplay = log.actor_tag || '—';
+                  const actorId      = log.actor_id  || '';
+                  const dateStr = new Date(log.created_at + ' UTC').toLocaleString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                  });
+                  const searchText = [
+                    log.event_type,
+                    log.ticket_name,
+                    log.user_tag,
+                    log.user_id,
+                    log.actor_tag,
+                    log.actor_id,
+                    log.category,
+                    log.reason
+                  ].filter(Boolean).join(' ').toLowerCase();
+                  const activeChannelId = activeTicketMap[log.ticket_name] || null;
+                %>
+                <tr class="log-row"
+                    data-event="<%= log.event_type %>"
+                    data-search="<%= searchText %>">
+                  <td><span class="event-badge <%= eventClass %>"><%= eventLabel %></span></td>
+                  <td><span class="ticket-name"><%= log.ticket_name %></span><br><span style="font-size:11px;color:var(--text-muted);">#<%= log.ticket_number %></span></td>
+                  <td>
+                    <div class="user-cell">
+                      <span class="uname"><%= log.user_tag || 'Unknown' %></span>
+                      <span class="uid"><%= log.user_id %></span>
+                    </div>
+                  </td>
+                  <td>
+                    <% if (actorDisplay !== '—') { %>
+                      <div class="user-cell">
+                        <span class="uname"><%= actorDisplay %></span>
+                        <% if (actorId) { %><span class="uid"><%= actorId %></span><% } %>
+                      </div>
+                    <% } else { %>
+                      <span style="color:var(--text-muted);">—</span>
+                    <% } %>
+                  </td>
+                  <td><span class="cat-pill"><%= log.category || 'Default' %></span></td>
+                  <td><span class="reason-cell" title="<%= log.reason || '' %>"><%= log.reason || '—' %></span></td>
+                  <td><span class="time-cell"><%= dateStr %></span></td>
+                  <td>
+                    <% if (log.transcript_url) { %>
+                      <a href="<%= log.transcript_url %>" target="_blank" rel="noopener" class="btn-transcript">
+                        <i class="fa fa-file-alt"></i> View
+                      </a>
+                    <% } else { %>
+                      <span style="color:var(--text-muted);font-size:12px;">—</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                      <% if (log.event_type === 'open' && activeChannelId) { %>
+                        <form method="POST" action="/manage/<%= guild.id %>/ticket/<%= activeChannelId %>/claim" style="margin:0;" onsubmit="return confirm('Claim this ticket?');">
+                          <button type="submit" class="btn-action btn-claim" style="padding:3px 10px;font-size:11px;"><i class="fa fa-hand-paper"></i> Claim</button>
+                        </form>
+                        <form method="POST" action="/manage/<%= guild.id %>/ticket/<%= activeChannelId %>/delete" style="margin:0;" onsubmit="return confirm('Delete ticket <%= log.ticket_name %>? This cannot be undone.');">
+                          <button type="submit" class="btn-action btn-delete" style="padding:3px 10px;font-size:11px;"><i class="fa fa-trash"></i> Delete</button>
+                        </form>
+                      <% } %>
+                      <form method="POST" action="/manage/<%= guild.id %>/ticket-log/<%= log.id %>/remove" style="margin:0;" onsubmit="return confirm('Remove this log entry from history?');">
+                        <button type="submit" title="Remove from log" style="background:transparent;border:1px solid #555;color:#aaa;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;"><i class="fa fa-times"></i></button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <div id="no-results" class="empty-state">
+          <i class="fa fa-search"></i>
+          <p>No events match your search.</p>
+        </div>
+      <% } %>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const filterBtns = document.querySelectorAll('.filter-btn');
+  const searchBox  = document.getElementById('log-search');
+  let activeFilter = 'all';
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      applyFilters();
+    });
+  });
+
+  if (searchBox) searchBox.addEventListener('input', applyFilters);
+
+  function applyFilters() {
+    const q = searchBox ? searchBox.value.toLowerCase() : '';
+    const rows = document.querySelectorAll('.log-row');
+    let visible = 0;
+    rows.forEach(row => {
+      const matchFilter = activeFilter === 'all' || row.dataset.event === activeFilter;
+      const matchSearch = !q || row.dataset.search.includes(q);
+      const show = matchFilter && matchSearch;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    const noResults = document.getElementById('no-results');
+    if (noResults) noResults.style.display = visible === 0 ? 'block' : 'none';
+  }
+</script>
+
+<%- include('../includes/footer') %>
+</body>
+</html>
